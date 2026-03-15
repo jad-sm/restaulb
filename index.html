@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RestauLb - Lebanon's Premier Dining Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            scroll-behavior: smooth;
+        }
+        
+        .video-docker video {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            position: absolute;
+            object-fit: cover;
+        }
+        
+        .video-overlay {
+            background: rgba(0, 0, 0, 0.5);
+            position: absolute;
+            inset: 0;
+        }
+        
+        #map {
+            height: 450px;
+            width: 100%;
+            border-radius: 2rem;
+            z-index: 10;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .whatsapp-float {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: #25d366;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            z-index: 99;
+            transition: 0.3s;
+        }
+        
+        .whatsapp-float:hover {
+            transform: scale(1.1);
+        }
+        /* Custom Hover Effects */
+        
+        .resto-card {
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .resto-card:hover {
+            transform: translateY(-12px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .img-container {
+            overflow: hidden;
+        }
+        
+        .resto-card:hover img {
+            transform: scale(1.1);
+            transition: transform 0.6s ease;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-900">
+
+    <nav class="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-3xl font-extrabold text-red-600 tracking-tighter cursor-pointer" onclick="window.scrollTo(0,0)">Restau<span class="text-blue-900">Lb</span></div>
+            <div class="hidden md:flex space-x-8 font-bold text-gray-600">
+                <a href="#map-section" class="hover:text-red-600 transition">Map</a>
+                <a href="#explore" class="hover:text-red-600 transition">Restaurants</a>
+                <a href="#about" class="hover:text-red-600 transition">About</a>
+            </div>
+            <a href="#explore" class="bg-red-600 text-white px-7 py-2.5 rounded-full font-bold shadow-lg hover:bg-red-700 transition">Book A Table</a>
+        </div>
+    </nav>
+
+    <section class="relative h-[70vh] flex items-center justify-center overflow-hidden">
+        <div class="video-docker absolute inset-0">
+            <video autoplay muted loop src="hero-video.mp4"></video>
+        </div>
+        <div class="video-overlay"></div>
+        <div class="relative z-10 text-center px-6">
+            <h1 class="text-5xl md:text-7xl font-black text-white mb-6 uppercase tracking-tight">Mata3em Lebnan</h1>
+            <p class="text-xl text-white opacity-90 mb-10 max-w-2xl mx-auto font-medium">Discover and reserve the finest tables across the Republic.</p>
+            <div class="relative max-w-xl mx-auto bg-white p-2 rounded-2xl shadow-2xl">
+                <input type="text" id="searchInput" onkeyup="searchResto()" placeholder="Search by name or area..." class="w-full p-4 rounded-xl text-gray-800 outline-none">
+            </div>
+        </div>
+    </section>
+
+    <section id="map-section" class="container mx-auto py-16 px-6">
+        <h2 class="text-3xl font-black text-gray-800 mb-8 text-center">Find Nearby Spots</h2>
+        <div id="map"></div>
+    </section>
+
+    <section id="explore" class="container mx-auto py-12 px-6">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
+            <h2 class="text-3xl font-black text-gray-800">Featured Restaurants</h2>
+            <div class="flex gap-2">
+                <button onclick="filterByArea('all')" class="area-btn px-6 py-2 rounded-full bg-red-600 text-white font-bold transition">All</button>
+                <button onclick="filterByArea('Beirut')" class="area-btn px-6 py-2 rounded-full bg-white border border-gray-200 font-bold hover:border-red-600 transition">Beirut</button>
+                <button onclick="filterByArea('Jbeil')" class="area-btn px-6 py-2 rounded-full bg-white border border-gray-200 font-bold hover:border-red-600 transition">Jbeil</button>
+                <button onclick="filterByArea('Bekaa')" class="area-btn px-6 py-2 rounded-full bg-white border border-gray-200 font-bold hover:border-red-600 transition">Bekaa</button>
+            </div>
+        </div>
+        <div id="restaurant-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10"></div>
+    </section>
+
+    <section id="about" class="bg-white py-20 px-6 border-t border-gray-100">
+        <div class="container mx-auto max-w-5xl">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <div>
+                    <h2 class="text-4xl font-black text-gray-800 mb-6 tracking-tight uppercase">About <span class="text-red-600">RestauLb</span></h2>
+                    <p class="text-gray-600 text-lg leading-relaxed mb-6 italic">RestauLb is Lebanon's premier digital concierge. We believe that booking a table should be as enjoyable as the meal itself.</p>
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-4"><span class="bg-red-600 text-white p-1 rounded-full text-xs font-bold px-2">✓</span><span class="font-bold text-gray-700">Handpicked Quality Establishments</span></div>
+                        <div class="flex items-center gap-4"><span class="bg-red-600 text-white p-1 rounded-full text-xs font-bold px-2">✓</span><span class="font-bold text-gray-700">Real-time WhatsApp Integration</span></div>
+                    </div>
+                </div>
+                <div class="relative"><img src="https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600" alt="Lebanese Table" class="rounded-3xl shadow-2xl"></div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-gray-900 text-white py-12 px-6">
+        <div class="container mx-auto text-center">
+            <div class="text-4xl font-black text-white mb-4">Restau<span class="text-red-600">Lb</span></div>
+            <div class="flex justify-center space-x-6 mb-6">
+                <a href="#" class="hover:text-red-500 transition font-bold">Instagram</a>
+                <a href="#" class="hover:text-red-500 transition font-bold">Facebook</a>
+            </div>
+            <p class="text-gray-400 text-sm font-bold">© 2026 RestauLb. Built for Lebanese Hospitality.</p>
+        </div>
+    </footer>
+
+    <div id="bookingModal" class="modal">
+        <div class="bg-white rounded-[2rem] max-w-md w-full p-10 shadow-2xl relative mx-4">
+            <button onclick="closeModal()" class="absolute top-6 right-6 text-2xl text-gray-400 hover:text-black">&times;</button>
+            <h3 class="text-3xl font-black text-gray-800 mb-1">Book Table</h3>
+            <p id="modalSubtitle" class="text-red-600 font-bold mb-8 italic"></p>
+            <form onsubmit="handleFinalBooking(event)" class="space-y-4">
+                <input type="hidden" id="restaurantInput">
+                <input type="text" id="custName" placeholder="Your Full Name" required class="w-full bg-gray-50 p-4 rounded-xl border border-gray-100 outline-none focus:ring-2 focus:ring-red-500">
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="date" id="bookDate" required class="w-full bg-gray-50 p-4 rounded-xl border border-gray-100 outline-none">
+                    <select id="bookGuests" class="w-full bg-gray-50 p-4 rounded-xl border border-gray-100 outline-none">
+                        <option>2 People</option>
+                        <option>4 People</option>
+                        <option>6+ People</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-blue-900 text-white py-4 rounded-xl font-black text-lg hover:bg-red-600 transition">Reserve via WhatsApp</button>
+            </form>
+        </div>
+    </div>
+
+    <a href="https://wa.me/96176545146" target="_blank" class="whatsapp-float">
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.938 3.659 1.434 5.632 1.434h.011c6.551 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    </a>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const restaurants = [{
+            name: "Em Sherif",
+            area: "Beirut",
+            lat: 33.8938,
+            lng: 35.5018,
+            rating: 4.9,
+            img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500"
+        }, {
+            name: "Babel Bahr",
+            area: "Jbeil",
+            lat: 34.1230,
+            lng: 35.6515,
+            rating: 4.8,
+            img: "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=500"
+        }, {
+            name: "Tawlet Ammiq",
+            area: "Bekaa",
+            lat: 33.7297,
+            lng: 35.7874,
+            rating: 4.7,
+            img: "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=500"
+        }, {
+            name: "Mounir",
+            area: "Beirut",
+            lat: 33.8700,
+            lng: 35.5600,
+            rating: 4.6,
+            img: "https://images.unsplash.com/photo-1544148103-0773bf10d330?w=500"
+        }, {
+            name: "Mir Amin",
+            area: "Chouf",
+            lat: 33.6934,
+            lng: 35.5801,
+            rating: 4.8,
+            img: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=500"
+        }, {
+            name: "Fattouh Restaurant",
+            area: "Zaytouna Bay",
+            lat: 33.8885,
+            lng: 35.4970,
+            rating: 4.7,
+            img: "https://tse3.mm.bing.net/th/id/OIP.7nO03zGDSGZ1_aKwhXheVgHaE7?pid=Api&P=0&h=180"
+        }, {
+            name: "Al Falamanki",
+            area: "Beirut",
+            lat: 33.8880,
+            lng: 35.5000,
+            rating: 4.7,
+            img: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=500"
+        }, {
+            name: "Chez Sami",
+            area: "Joounieh",
+            lat: 34.1100,
+            lng: 35.6500,
+            rating: 4.6,
+            img: "https://tse3.mm.bing.net/th/id/OIP.2x4YXgmkjNshOoPNOpMxIAHaFh?pid=Api&P=0&h=180"
+        }, {
+            name: "Al Sultan Brahim",
+            area: "Jbeil",
+            lat: 34.1200,
+            lng: 35.6480,
+            rating: 4.5,
+            img: "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/18/86/7d/02/photo1jpg.jpg?w=1400&h=-1&s=1"
+        }];
+
+        function initMap() {
+            const map = L.map('map').setView([33.8750, 35.6500], 9);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            restaurants.forEach(r => {
+                L.marker([r.lat, r.lng]).addTo(map).bindPopup(`<b>${r.name}</b>`).on('click', () => openBooking(r.name));
+            });
+        }
+
+        function displayRestaurants(data) {
+            const grid = document.getElementById('restaurant-grid');
+            grid.innerHTML = data.map(r => `
+                <div onclick="openBooking('${r.name}')" class="resto-card bg-white rounded-[2rem] shadow-sm overflow-hidden border border-gray-100">
+                    <div class="img-container">
+                        <img src="${r.img}" class="w-full h-64 object-cover">
+                    </div>
+                    <div class="p-8">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-2xl font-black text-gray-800">${r.name}</h3>
+                                <p class="text-red-600 font-bold text-sm uppercase">${r.area}</p>
+                            </div>
+                            <div class="text-yellow-500 font-black">★ ${r.rating}</div>
+                        </div>
+                        <button class="w-full bg-red-600 text-white py-4 rounded-xl font-bold hover:bg-blue-900 transition">Reserve Table</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function searchResto() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            displayRestaurants(restaurants.filter(r => r.name.toLowerCase().includes(query) || r.area.toLowerCase().includes(query)));
+        }
+
+        function filterByArea(area) {
+            const btns = document.querySelectorAll('.area-btn');
+            btns.forEach(btn => {
+                btn.className = "area-btn px-6 py-2 rounded-full bg-white border border-gray-200 font-bold hover:border-red-600 transition";
+                if (btn.innerText === area || (area === 'all' && btn.innerText === 'All')) {
+                    btn.classList.add('bg-red-600', 'text-white', 'border-red-600');
+                }
+            });
+            displayRestaurants(area === 'all' ? restaurants : restaurants.filter(r => r.area === area));
+        }
+
+        function openBooking(name) {
+            document.getElementById('modalSubtitle').innerText = name;
+            document.getElementById('restaurantInput').value = name;
+            document.getElementById('bookingModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('bookingModal').classList.remove('active');
+        }
+
+        function handleFinalBooking(e) {
+            e.preventDefault();
+            const msg = `Marhaba RestauLb! I'd like to book ${document.getElementById('restaurantInput').value} on ${document.getElementById('bookDate').value} for ${document.getElementById('bookGuests').value}. My name is ${document.getElementById('custName').value}.`;
+            window.open(`https://wa.me/96176545146?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        window.onload = () => {
+            initMap();
+            displayRestaurants(restaurants);
+        };
+    </script>
+</body>
+
+</html>
